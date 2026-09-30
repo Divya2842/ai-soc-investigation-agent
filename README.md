@@ -42,7 +42,7 @@ The Alerts page displays security incidents available for investigation.
 
 The investigation view displays alert evidence, IOC enrichment, AI-assisted findings, risk analysis, MITRE mappings, and recommended response actions.
 
-![AI Investigation](docs/screenshots/investigationdashboard.png)
+![AI Investigation](docs/screenshots/investigationdasboard.png)
 
 ---
 
