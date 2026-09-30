@@ -1,31 +1,34 @@
 from __future__ import annotations
 
-import smtplib
-from email.message import EmailMessage
+import os
 
-from app.config.settings import settings
+import resend
+
 
 def send_password_reset_otp(
     recipient_email: str,
     otp: str,
 ) -> None:
     """
-    Send a password-reset OTP through Gmail SMTP.
+    Send a password-reset OTP using the Resend HTTPS API.
     """
 
-    if not settings.smtp_configured:
+    api_key = os.getenv("RESEND_API_KEY")
+
+    if not api_key:
         raise RuntimeError(
-            "SMTP email configuration is missing."
+            "RESEND_API_KEY is not configured."
         )
 
-    message = EmailMessage()
+    resend.api_key = api_key
 
-    message["Subject"] = "SOC Agent - Password Reset Code"
-    message["From"] = settings.smtp_from_email
-    message["To"] = recipient_email
-
-    message.set_content(
-        f"""
+    try:
+        resend.Emails.send(
+            {
+                "from": "SOC Investigation Agent <onboarding@resend.dev>",
+                "to": [recipient_email],
+                "subject": "SOC Agent - Password Reset Code",
+                "text": f"""
 SOC Investigation Agent
 
 We received a request to reset your password.
@@ -39,26 +42,9 @@ This code expires in 10 minutes.
 If you did not request a password reset, you can ignore this email.
 
 Do not share this verification code with anyone.
-""".strip()
-    )
-
-    try:
-        with smtplib.SMTP(
-            settings.smtp_host,
-            settings.smtp_port,
-            timeout=15,
-        ) as server:
-
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-
-            server.login(
-                settings.smtp_username,
-                settings.smtp_password,
-            )
-
-            server.send_message(message)
+""".strip(),
+            }
+        )
 
     except Exception as exc:
         raise RuntimeError(
