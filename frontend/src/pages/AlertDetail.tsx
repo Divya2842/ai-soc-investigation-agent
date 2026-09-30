@@ -179,7 +179,7 @@ export default function AlertDetail() {
 
       <button
         type="button"
-        onClick={() => navigate("/dashboard")}
+        onClick={() => navigate("/alerts")}
         className="
           inline-flex
           items-center
