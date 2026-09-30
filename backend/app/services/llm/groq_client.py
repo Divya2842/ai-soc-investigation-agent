@@ -25,8 +25,9 @@ from app.schemas.investigation import InvestigationResult
 SYSTEM_PROMPT = """
 You are a SOC investigation assistant.
 
-You receive a JSON object named EVIDENCE. The evidence was collected by
-deterministic security tools, including:
+You receive a JSON object named EVIDENCE.
+
+The evidence was collected by deterministic security tools, including:
 
 - IOC extraction
 - IOC enrichment
@@ -39,11 +40,14 @@ Your job is to create an analyst-readable investigation narrative using
 ONLY the supplied evidence.
 
 
-IMPORTANT RULES
+============================================================
+EVIDENCE SAFETY RULES
+============================================================
 
 1. Never invent security facts.
 
 2. Never invent:
+
    - users
    - hosts
    - processes
@@ -68,26 +72,57 @@ IMPORTANT RULES
 
    "Not available in the collected evidence."
 
-5. Every finding must be supported by evidence.
+5. Every finding must be supported by supplied evidence.
 
-6. MITRE ATT&CK techniques must come only from:
+6. MITRE ATT&CK techniques must come ONLY from:
+
    EVIDENCE["mitre_attack_matches"]
 
-7. MITRE ATLAS techniques must come only from:
+7. MITRE ATLAS techniques must come ONLY from:
+
    EVIDENCE["mitre_atlas_matches"]
 
-8. If no ATLAS techniques exist, return:
+8. If no MITRE ATLAS techniques are present, return:
 
    "atlas_techniques": []
 
-9. Do not change technique IDs supplied in EVIDENCE.
+9. Do not modify technique IDs supplied in EVIDENCE.
 
-10. Do not use Markdown.
+10. If an IOC reputation is clean, unknown, or unavailable,
+    do not describe that IOC as malicious.
 
-11. Do not wrap the response in ```json fences.
+11. If evidence is insufficient to prove malicious intent,
+    clearly state that conclusion.
 
-12. Return ONE JSON object only.
 
+============================================================
+OUTPUT RULES
+============================================================
+
+Return EXACTLY ONE JSON object.
+
+Do NOT use Markdown.
+
+Do NOT use ```json code fences.
+
+Do NOT include explanatory text before the JSON.
+
+Do NOT include explanatory text after the JSON.
+
+Do NOT return multiple JSON objects.
+
+Do NOT include JSON comments.
+
+Use double quotes for JSON property names.
+
+Use double quotes for JSON string values.
+
+Do NOT include trailing commas.
+
+
+============================================================
+REQUIRED TOP-LEVEL SCHEMA
+============================================================
 
 The JSON object MUST contain exactly these top-level fields:
 
@@ -104,7 +139,11 @@ The JSON object MUST contain exactly these top-level fields:
 }
 
 
-Allowed severity values:
+============================================================
+SEVERITY
+============================================================
+
+severity MUST be exactly one of:
 
 "low"
 "medium"
@@ -112,38 +151,24 @@ Allowed severity values:
 "critical"
 
 
-confidence must be a number from 0.0 to 1.0.
+============================================================
+CONFIDENCE
+============================================================
+
+confidence MUST be a JSON number between 0.0 and 1.0.
+
+Example:
+
+"confidence": 0.85
+
+Do NOT return confidence as a string.
 
 
-findings must use this structure:
+============================================================
+SUMMARY
+============================================================
 
-[
-  {
-    "statement": "string",
-    "evidence": ["string"]
-  }
-]
-
-
-attack_techniques must use this structure:
-
-[
-  {
-    "technique_id": "string",
-    "name": "string",
-    "tactic": "string",
-    "rationale": "string",
-    "supporting_evidence": ["string"]
-  }
-]
-
-
-atlas_techniques must use the same structure.
-
-recommended_actions must be an array of strings.
-
-
-SUMMARY REQUIREMENTS
+summary MUST be a string.
 
 Write the summary as a concise SOC analyst narrative.
 
@@ -152,18 +177,201 @@ Explain:
 - what was observed
 - what evidence was collected
 - IOC enrichment results
-- relevant ATT&CK/ATLAS mappings
+- relevant ATT&CK / ATLAS mappings
 - why the evidence matters
 - what should be reviewed next
 
 Do not exaggerate the evidence.
 
-If an IOC reputation is clean, do not describe that IOC as malicious.
 
-If evidence is insufficient to prove malicious intent, clearly say so.
+============================================================
+FINDINGS
+============================================================
+
+findings MUST be an array of objects.
+
+Each finding MUST use exactly this structure:
+
+[
+  {
+    "statement": "string",
+    "evidence": [
+      "evidence string",
+      "evidence string"
+    ]
+  }
+]
+
+IMPORTANT:
+
+The "evidence" field INSIDE each finding MUST also be an array
+of strings.
+
+Do NOT place JSON objects inside a finding's evidence array.
+
+
+============================================================
+TOP-LEVEL EVIDENCE
+============================================================
+
+The TOP-LEVEL "evidence" field MUST be an array of STRINGS.
+
+Correct:
+
+"evidence": [
+  "Source IP 10.10.12.4 was observed in the alert.",
+  "Destination IP 10.10.1.30 was observed in correlated logs.",
+  "No malicious IOC reputation was returned by enrichment."
+]
+
+INCORRECT:
+
+"evidence": [
+  {
+    "ioc_value": "10.10.12.4",
+    "reputation": "unknown"
+  }
+]
+
+Never put dictionaries, objects, arrays, numbers, or booleans
+inside the top-level evidence array.
+
+Convert structured evidence into concise human-readable strings.
+
+
+============================================================
+MITRE ATT&CK TECHNIQUES
+============================================================
+
+attack_techniques MUST be an array.
+
+Every entry MUST use this structure:
+
+[
+  {
+    "technique_id": "string",
+    "name": "string",
+    "tactic": "string",
+    "rationale": "string",
+    "supporting_evidence": [
+      "string"
+    ]
+  }
+]
+
+supporting_evidence MUST be an array of strings.
+
+Only use ATT&CK techniques supplied in:
+
+EVIDENCE["mitre_attack_matches"]
+
+
+============================================================
+MITRE ATLAS TECHNIQUES
+============================================================
+
+atlas_techniques MUST use the same object structure:
+
+[
+  {
+    "technique_id": "string",
+    "name": "string",
+    "tactic": "string",
+    "rationale": "string",
+    "supporting_evidence": [
+      "string"
+    ]
+  }
+]
+
+supporting_evidence MUST be an array of strings.
+
+Only use ATLAS techniques supplied in:
+
+EVIDENCE["mitre_atlas_matches"]
+
+If no ATLAS mappings exist, return:
+
+"atlas_techniques": []
+
+
+============================================================
+RECOMMENDED ACTIONS
+============================================================
+
+recommended_actions MUST be an array of strings.
+
+Correct:
+
+"recommended_actions": [
+  "Review authentication activity for the affected user.",
+  "Validate whether the observed WMI activity was authorized."
+]
+
+Incorrect:
+
+"recommended_actions": [
+  {
+    "action": "Review authentication activity"
+  }
+]
+
+
+============================================================
+FINAL CHECK
+============================================================
+
+Before returning the response, verify:
+
+1. There is exactly ONE top-level JSON object.
+
+2. It contains:
+
+   verdict
+   severity
+   confidence
+   summary
+   findings
+   evidence
+   attack_techniques
+   atlas_techniques
+   recommended_actions
+
+3. top-level evidence contains STRINGS ONLY.
+
+4. finding evidence contains STRINGS ONLY.
+
+5. supporting_evidence contains STRINGS ONLY.
+
+6. recommended_actions contains STRINGS ONLY.
+
+7. severity is low, medium, high, or critical.
+
+8. confidence is a number between 0.0 and 1.0.
+
+9. All braces and brackets are properly closed.
+
+10. No text exists outside the JSON object.
 
 Return JSON only.
 """.strip()
+
+
+# ============================================================
+# REQUIRED TOP-LEVEL FIELDS
+# ============================================================
+
+REQUIRED_TOP_LEVEL_FIELDS = {
+    "verdict",
+    "severity",
+    "confidence",
+    "summary",
+    "findings",
+    "evidence",
+    "attack_techniques",
+    "atlas_techniques",
+    "recommended_actions",
+}
 
 
 # ============================================================
@@ -187,6 +395,10 @@ def is_configured() -> bool:
 
 
 def _get_client():
+    """
+    Create the Groq client only when Groq is actually required.
+    """
+
     if not settings.groq_configured:
         raise GroqNotConfiguredError(
             "GROQ_API_KEY is not set. "
@@ -194,8 +406,7 @@ def _get_client():
             "but AI-authored summaries require Groq."
         )
 
-    # Lazy import so the application does not require Groq
-    # unless AI generation is actually used.
+    # Lazy import keeps Groq isolated to this module.
     from groq import Groq
 
     return Groq(
@@ -204,22 +415,54 @@ def _get_client():
 
 
 # ============================================================
+# TOP-LEVEL OBJECT CHECK
+# ============================================================
+
+def _looks_like_investigation(
+    value: Any,
+) -> bool:
+    """
+    Return True only when the dictionary looks like the complete
+    top-level InvestigationResult.
+
+    This prevents a nested object such as:
+
+        {
+            "statement": "...",
+            "evidence": [...]
+        }
+
+    from being mistaken for the full investigation response.
+    """
+
+    return (
+        isinstance(value, dict)
+        and REQUIRED_TOP_LEVEL_FIELDS.issubset(value.keys())
+    )
+
+
+# ============================================================
 # JSON EXTRACTION
 # ============================================================
 
-def _extract_json(raw_text: str) -> dict[str, Any]:
+def _extract_json(
+    raw_text: str,
+) -> dict[str, Any]:
     """
-    Extract the first valid JSON object from the model response.
+    Extract the complete top-level InvestigationResult JSON object.
 
     Handles:
-    - pure JSON
-    - accidental Markdown JSON fences
-    - surrounding explanatory text
-    - trailing text
-    - multiple JSON objects
 
-    The function does NOT attempt to repair malformed JSON.
-    It only extracts syntactically valid JSON.
+    - pure JSON
+    - accidental Markdown fences
+    - text surrounding JSON
+    - multiple JSON objects
+    - nested JSON objects
+    - trailing content
+
+    The function deliberately does NOT attempt to repair invalid JSON.
+    Invalid model output should be retried or rejected rather than
+    silently modified.
     """
 
     if not raw_text:
@@ -229,9 +472,9 @@ def _extract_json(raw_text: str) -> dict[str, Any]:
 
     text = raw_text.strip()
 
-    # ---------------------------------------------------------
-    # Remove accidental Markdown code fences
-    # ---------------------------------------------------------
+    # --------------------------------------------------------
+    # Remove accidental Markdown fences.
+    # --------------------------------------------------------
 
     text = re.sub(
         r"^```(?:json)?\s*",
@@ -248,48 +491,43 @@ def _extract_json(raw_text: str) -> dict[str, Any]:
 
     text = text.strip()
 
-    # ---------------------------------------------------------
-    # Attempt 1:
-    # Entire response is already one JSON object.
-    # ---------------------------------------------------------
+    # --------------------------------------------------------
+    # ATTEMPT 1
+    #
+    # Try parsing the entire response first.
+    # --------------------------------------------------------
 
     try:
         parsed = json.loads(text)
 
-        if not isinstance(parsed, dict):
-            raise LLMOutputValidationError(
-                "Groq response was valid JSON but was not a JSON object."
-            )
-
-        return parsed
+        if _looks_like_investigation(parsed):
+            return parsed
 
     except json.JSONDecodeError:
         pass
 
-    # ---------------------------------------------------------
-    # Attempt 2:
-    # Search for the first independently valid JSON object.
+    # --------------------------------------------------------
+    # ATTEMPT 2
     #
-    # json.JSONDecoder.raw_decode() is important here.
+    # Scan the response for independently valid JSON objects.
     #
-    # Unlike:
-    #
-    #     text.find("{")
-    #     text.rfind("}")
-    #
-    # raw_decode() determines exactly where one JSON object
-    # finishes. Therefore trailing text or another JSON object
-    # does not automatically invalidate the first object.
-    # ---------------------------------------------------------
+    # JSONDecoder.raw_decode() tells us exactly where each JSON
+    # object ends, preventing trailing content or a second JSON
+    # object from corrupting the first.
+    # --------------------------------------------------------
 
     decoder = json.JSONDecoder()
 
     search_position = 0
-    last_error: json.JSONDecodeError | None = None
+    last_json_error: json.JSONDecodeError | None = None
+    valid_non_investigation_object_found = False
 
-    while True:
+    while search_position < len(text):
 
-        start = text.find("{", search_position)
+        start = text.find(
+            "{",
+            search_position,
+        )
 
         if start == -1:
             break
@@ -297,28 +535,50 @@ def _extract_json(raw_text: str) -> dict[str, Any]:
         candidate = text[start:]
 
         try:
-            parsed, _end_index = decoder.raw_decode(candidate)
+            parsed, end_index = decoder.raw_decode(
+                candidate
+            )
 
-            if isinstance(parsed, dict):
+            if _looks_like_investigation(parsed):
                 return parsed
 
+            if isinstance(parsed, dict):
+                valid_non_investigation_object_found = True
+
+            # Continue searching after this object's opening brace.
+            #
+            # We intentionally do not jump completely past the
+            # object because a malformed outer object can sometimes
+            # contain a valid complete investigation object.
+            search_position = start + 1
+
         except json.JSONDecodeError as exc:
-            last_error = exc
 
-        # Move to the next opening brace and try again.
-        search_position = start + 1
+            last_json_error = exc
 
-    # ---------------------------------------------------------
-    # No valid JSON object found
-    # ---------------------------------------------------------
+            # Move to the next possible opening brace.
+            search_position = start + 1
 
-    if last_error is not None:
+    # --------------------------------------------------------
+    # No complete InvestigationResult found.
+    # --------------------------------------------------------
+
+    if valid_non_investigation_object_found:
         raise LLMOutputValidationError(
-            f"Model did not return valid JSON: {last_error}"
-        ) from last_error
+            "Groq returned valid JSON object(s), but none contained "
+            "all required InvestigationResult top-level fields: "
+            f"{sorted(REQUIRED_TOP_LEVEL_FIELDS)}"
+        )
+
+    if last_json_error is not None:
+        raise LLMOutputValidationError(
+            "Could not find a complete InvestigationResult JSON object. "
+            f"Last JSON error: {last_json_error}"
+        ) from last_json_error
 
     raise LLMOutputValidationError(
-        "Could not find a valid JSON object in the Groq response."
+        "Groq response did not contain a valid InvestigationResult "
+        "JSON object."
     )
 
 
@@ -330,16 +590,21 @@ def _validate_result(
     parsed: dict[str, Any],
 ) -> InvestigationResult:
     """
-    Validate Groq JSON against the application's
+    Validate the model-generated JSON using the application's
     InvestigationResult Pydantic schema.
+
+    We deliberately keep validation strict rather than changing the
+    schema to accept arbitrary model output.
     """
 
     try:
+
         return InvestigationResult.model_validate(
             parsed
         )
 
     except ValidationError as exc:
+
         raise LLMOutputValidationError(
             "Model JSON did not match "
             f"InvestigationResult schema: {exc}"
@@ -358,11 +623,17 @@ def _call_groq(
     """
     Make one Groq request.
 
-    JSON parsing/validation is intentionally handled locally instead
-    of using response_format=json_object.
+    JSON parsing and Pydantic validation are performed locally.
 
-    This avoids provider-side json_validate_failed errors while still
-    enforcing our Pydantic schema after generation.
+    We intentionally do NOT use:
+
+        response_format={"type": "json_object"}
+
+    because provider-side JSON validation previously caused
+    json_validate_failed errors.
+
+    Local validation gives the application control over retries and
+    deterministic fallback behavior.
     """
 
     evidence_json = json.dumps(
@@ -372,16 +643,21 @@ def _call_groq(
     )
 
     user_content = (
-        "Generate the SOC investigation result using the "
+        "Generate the SOC investigation result using ONLY the "
         "following evidence.\n\n"
         "EVIDENCE:\n"
         f"{evidence_json}\n\n"
-        "Return exactly one valid JSON object and nothing else."
+        "Return exactly ONE valid JSON object matching the required "
+        "InvestigationResult schema and nothing else.\n\n"
+        "Remember: the TOP-LEVEL evidence field MUST contain "
+        "strings only."
     )
 
     if retry_instruction:
+
         user_content += (
-            "\n\nIMPORTANT CORRECTION:\n"
+            "\n\n"
+            "IMPORTANT CORRECTION FOR THIS RETRY:\n"
             f"{retry_instruction}"
         )
 
@@ -415,6 +691,102 @@ def _call_groq(
 
 
 # ============================================================
+# RETRY INSTRUCTION
+# ============================================================
+
+STRICT_RETRY_INSTRUCTION = """
+The previous response could not be validated.
+
+Generate the complete investigation again from the supplied EVIDENCE.
+
+Return EXACTLY ONE JSON object.
+
+The TOP-LEVEL object MUST contain ALL of these fields:
+
+- verdict
+- severity
+- confidence
+- summary
+- findings
+- evidence
+- attack_techniques
+- atlas_techniques
+- recommended_actions
+
+Do not return an individual finding object as the top-level response.
+
+TOP-LEVEL evidence MUST be an array of STRINGS ONLY.
+
+For example:
+
+"evidence": [
+  "Source IP 10.10.12.4 was observed in the alert.",
+  "Destination IP 10.10.1.30 appeared in correlated log evidence."
+]
+
+Do NOT return:
+
+"evidence": [
+  {
+    "ioc_value": "10.10.12.4"
+  }
+]
+
+Convert structured evidence objects into concise strings.
+
+findings MUST be an array of objects containing:
+
+{
+  "statement": "string",
+  "evidence": ["string"]
+}
+
+The evidence inside each finding MUST also contain strings only.
+
+attack_techniques and atlas_techniques MUST contain objects with:
+
+{
+  "technique_id": "string",
+  "name": "string",
+  "tactic": "string",
+  "rationale": "string",
+  "supporting_evidence": ["string"]
+}
+
+supporting_evidence MUST contain strings only.
+
+recommended_actions MUST contain strings only.
+
+severity MUST be exactly one of:
+
+"low"
+"medium"
+"high"
+"critical"
+
+confidence MUST be a JSON number between 0.0 and 1.0.
+
+Do not use Markdown.
+
+Do not use code fences.
+
+Do not include comments.
+
+Do not include explanations before the JSON.
+
+Do not include explanations after the JSON.
+
+Do not return multiple JSON objects.
+
+Do not include trailing commas.
+
+Make sure every object and array is properly closed.
+
+Return the complete JSON object only.
+""".strip()
+
+
+# ============================================================
 # INVESTIGATION GENERATION
 # ============================================================
 
@@ -426,21 +798,26 @@ def generate_investigation_summary(
 
     Flow:
 
-        Evidence
-            ↓
-        Groq
-            ↓
-        JSON extraction
-            ↓
-        Pydantic validation
-            ↓
-        InvestigationResult
+        Deterministic Evidence
+                ↓
+              Groq
+                ↓
+        JSON Extraction
+                ↓
+       Top-Level Validation
+                ↓
+        Pydantic Validation
+                ↓
+      InvestigationResult
 
-    If the first generation is malformed, one additional generation
-    is attempted with stricter JSON instructions.
+    If attempt 1 produces malformed or schema-invalid output,
+    attempt 2 regenerates the complete response with stricter
+    instructions.
 
-    If both attempts fail, an LLMOutputValidationError is raised and
-    the investigation graph can use its deterministic fallback.
+    If both attempts fail, LLMOutputValidationError is raised.
+
+    The investigation graph can then safely use the deterministic
+    fallback.
     """
 
     client = _get_client()
@@ -462,9 +839,17 @@ def generate_investigation_summary(
             raw_text
         )
 
-        return _validate_result(
+        validated_result = _validate_result(
             parsed
         )
+
+        print(
+            "GROQ INVESTIGATION SUCCESS: "
+            "AI investigation output validated successfully.",
+            flush=True,
+        )
+
+        return validated_result
 
     except (
         LLMOutputValidationError,
@@ -475,7 +860,7 @@ def generate_investigation_summary(
         first_error = exc
 
         print(
-            f"GROQ OUTPUT VALIDATION WARNING: "
+            "GROQ OUTPUT VALIDATION WARNING: "
             f"{type(exc).__name__}: {exc}",
             flush=True,
         )
@@ -489,37 +874,29 @@ def generate_investigation_summary(
         raw_text = _call_groq(
             client=client,
             evidence=evidence,
-            retry_instruction=(
-                "The previous generation could not be validated. "
-                "Return ONLY one syntactically valid JSON object. "
-                "Do not use Markdown. "
-                "Do not use code fences. "
-                "Do not include comments. "
-                "Do not include explanations. "
-                "Do not include text before the JSON. "
-                "Do not include text after the JSON. "
-                "Do not return multiple JSON objects. "
-                "Use double quotes for every JSON property name "
-                "and every JSON string value. "
-                "Do not include trailing commas. "
-                "Make sure every required field exists. "
-                "Make sure every array and object is properly closed. "
-                "Return the JSON object only."
-            ),
+            retry_instruction=STRICT_RETRY_INSTRUCTION,
         )
 
         parsed = _extract_json(
             raw_text
         )
 
-        return _validate_result(
+        validated_result = _validate_result(
             parsed
         )
+
+        print(
+            "GROQ INVESTIGATION SUCCESS AFTER RETRY: "
+            "AI investigation output validated successfully.",
+            flush=True,
+        )
+
+        return validated_result
 
     except Exception as exc:
 
         print(
-            f"GROQ RETRY ERROR: "
+            "GROQ RETRY ERROR: "
             f"{type(exc).__name__}: {exc}",
             flush=True,
         )
