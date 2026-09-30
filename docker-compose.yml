@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: soc_agent
+      POSTGRES_USER: soc
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-soc}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soc -d soc_agent"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports: ["8000:8000"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://soc:${POSTGRES_PASSWORD:-soc}@db:5432/soc_agent
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+      VT_API_KEY: ${VT_API_KEY:-}
+      ABUSEIPDB_API_KEY: ${ABUSEIPDB_API_KEY:-}
+      LOG_SOURCE: local
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+  frontend:
+    build:
+      context: ./frontend
+    ports: ["5173:80"]
+    depends_on: [backend]
+volumes:
+  postgres_data:

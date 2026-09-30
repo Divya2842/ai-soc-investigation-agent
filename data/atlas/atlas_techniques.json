@@ -1,0 +1,44 @@
+[
+  {
+    "technique_id": "AML.T0051",
+    "name": "LLM Prompt Injection",
+    "tactic": "Initial Access",
+    "ai_signal_patterns": ["ignore previous instructions", "system prompt", "jailbreak", "prompt injection", "disregard your instructions"],
+    "description": "An adversary crafts input designed to override or manipulate an LLM application's intended instructions."
+  },
+  {
+    "technique_id": "AML.T0024",
+    "name": "Extract LLM System Prompt",
+    "tactic": "Exfiltration",
+    "ai_signal_patterns": ["reveal your system prompt", "print your instructions", "repeat the text above", "what were you told"],
+    "description": "An adversary attempts to extract the hidden system prompt or configuration of an LLM-based application."
+  },
+  {
+    "technique_id": "AML.T0043",
+    "name": "Craft Adversarial Data",
+    "tactic": "Defense Evasion",
+    "ai_signal_patterns": ["adversarial example", "evasion input", "perturbed input", "model evasion"],
+    "description": "An adversary crafts inputs specifically designed to cause a ML model to misclassify or behave unexpectedly."
+  },
+  {
+    "technique_id": "AML.T0020",
+    "name": "Poison Training Data",
+    "tactic": "Persistence",
+    "ai_signal_patterns": ["training data poisoning", "poisoned dataset", "backdoored model", "label flipping"],
+    "description": "An adversary manipulates training data to influence the behavior of a model trained on it."
+  },
+  {
+    "technique_id": "AML.T0053",
+    "name": "LLM Plugin Compromise / Tool Abuse",
+    "tactic": "Execution",
+    "ai_signal_patterns": ["agent tool abuse", "unauthorized tool call", "plugin compromise", "function calling exploit"],
+    "description": "An adversary manipulates an LLM agent into invoking tools/plugins outside their intended scope or permissions."
+  },
+  {
+    "technique_id": "AML.T0057",
+    "name": "LLM Data Leakage",
+    "tactic": "Exfiltration",
+    "ai_signal_patterns": ["sensitive information exposure", "pii leak", "model memorization", "training data extraction"],
+    "description": "An LLM application exposes sensitive information it was trained on or has access to via its context/tools."
+  }
+]

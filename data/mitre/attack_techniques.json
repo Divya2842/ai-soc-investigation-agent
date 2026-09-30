@@ -1,0 +1,86 @@
+[
+  {
+    "technique_id": "T1059.001",
+    "name": "Command and Scripting Interpreter: PowerShell",
+    "tactic": "Execution",
+    "match_patterns": ["powershell.exe", "-enc", "-encodedcommand", "downloadstring", "iex ("],
+    "description": "Adversaries abuse PowerShell commands and scripts for execution, often with encoding/obfuscation to evade detection."
+  },
+  {
+    "technique_id": "T1204.002",
+    "name": "User Execution: Malicious File",
+    "tactic": "Execution",
+    "match_patterns": ["downloads\\", ".exe", "outlook.exe"],
+    "description": "A user opens a malicious file delivered via email or download, resulting in execution of adversary code."
+  },
+  {
+    "technique_id": "T1110",
+    "name": "Brute Force",
+    "tactic": "Credential Access",
+    "match_patterns": ["failed_attempts", "logon_failure", "4625"],
+    "description": "Adversaries use brute force techniques to gain access to accounts when passwords are unknown or password hashes are obtained."
+  },
+  {
+    "technique_id": "T1071.001",
+    "name": "Application Layer Protocol: Web Protocols",
+    "tactic": "Command and Control",
+    "match_patterns": ["outbound", "443", "beaconing"],
+    "description": "Adversaries communicate using application-layer protocols like HTTP/HTTPS to blend with legitimate traffic."
+  },
+  {
+    "technique_id": "T1071",
+    "name": "Application Layer Protocol",
+    "tactic": "Command and Control",
+    "match_patterns": ["c2", "command and control", "malicious ip"],
+    "description": "Adversaries communicate using application layer protocols to avoid detection/network filtering."
+  },
+  {
+    "technique_id": "T1566.002",
+    "name": "Phishing: Spearphishing Link",
+    "tactic": "Initial Access",
+    "match_patterns": ["phishing", "credential-harvesting", "clicked a", "login.top", "email_subject"],
+    "description": "Adversaries send phishing emails containing a link to a credential-harvesting or malicious page."
+  },
+  {
+    "technique_id": "T1003.001",
+    "name": "OS Credential Dumping: LSASS Memory",
+    "tactic": "Credential Access",
+    "match_patterns": ["lsass.exe", "lsass", "minidump", "comsvcs.dll"],
+    "description": "Adversaries dump credentials from the memory of the LSASS process, commonly via a memory dump technique."
+  },
+  {
+    "technique_id": "T1047",
+    "name": "Windows Management Instrumentation",
+    "tactic": "Execution",
+    "match_patterns": ["wmic", "wmiprvse.exe", "wmi_remote_exec"],
+    "description": "Adversaries abuse WMI to execute malicious commands and payloads, often for lateral movement."
+  },
+  {
+    "technique_id": "T1021.002",
+    "name": "Remote Services: SMB/Windows Admin Shares",
+    "tactic": "Lateral Movement",
+    "match_patterns": ["psexec", "admin$", "smb", "445"],
+    "description": "Adversaries use valid accounts to interact with remote systems via SMB/admin shares for lateral movement."
+  },
+  {
+    "technique_id": "T1105",
+    "name": "Ingress Tool Transfer",
+    "tactic": "Command and Control",
+    "match_patterns": ["downloadstring", "invoke-webrequest", "-outfile", "download cradle"],
+    "description": "Adversaries transfer tools or files from an external system into the compromised environment."
+  },
+  {
+    "technique_id": "T1087.001",
+    "name": "Account Discovery: Local Account",
+    "tactic": "Discovery",
+    "match_patterns": ["net user", "get-localuser", "whoami"],
+    "description": "Adversaries enumerate local accounts on a system as part of discovery activity, often after gaining a foothold."
+  },
+  {
+    "technique_id": "T1568",
+    "name": "Dynamic Resolution",
+    "tactic": "Command and Control",
+    "match_patterns": ["newly-registered domain", "domain_age_days", "fast flux"],
+    "description": "Adversaries dynamically establish connections using newly-registered or algorithmically generated domains to evade static blocklists."
+  }
+]
