@@ -11,8 +11,7 @@ COPY data/ ./data/
 WORKDIR /app/backend
 
 ENV PYTHONUNBUFFERED=1
-ENV DATABASE_URL=sqlite:////app/backend/soc.db
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python -m app.database.seed && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "python -m app.database.seed && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
