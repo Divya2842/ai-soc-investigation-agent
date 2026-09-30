@@ -10,37 +10,51 @@ The project demonstrates how **AI agents can support SOC analysts while keeping 
 
 ### Application
 
-https://ai-soc-investigation-agent-frontend.onrender.com
+https://ai-soc-investigation-agent.onrender.com
 
-### Backend API / Swagger
+### API Documentation / Swagger
 
 https://ai-soc-investigation-agent.onrender.com/docs
 
-> **Note:** The application is hosted on Render. Initial loading may take a little longer if a service needs to start.
+> **Note:** The React frontend and FastAPI backend are deployed together as a single Render service. Initial loading may take a little longer if the service needs to start.
 
 ---
 
-## 📸 Application Screenshots
+# 📸 Application Screenshots
 
-### SOC Dashboard
+## SOC Dashboard
+
+The dashboard provides an overview of alerts and SOC investigation activity.
 
 ![SOC Dashboard](docs/screenshots/dashboard.png)
 
-### AI-Powered Investigation
+---
 
-![AI Investigation](docs/screenshots/ai-investigation.png)
+## Security Alerts
 
-### Investigation Report
+The Alerts page displays security incidents available for investigation.
 
-![Investigation Report](docs/screenshots/investigation-report.png)
-
-### MITRE ATT&CK / ATLAS Mapping
-
-![MITRE Mapping](docs/screenshots/mitre-mapping.png)
+![Security Alerts](docs/screenshots/Alert.png)
 
 ---
 
-## 🔎 Investigation Workflow
+## AI Investigation
+
+The investigation view displays alert evidence, IOC enrichment, AI-assisted findings, risk analysis, MITRE mappings, and recommended response actions.
+
+![AI Investigation](docs/screenshots/investigationdashboard.png)
+
+---
+
+## IOC Lookup
+
+The IOC Lookup feature allows analysts to investigate indicators and review available threat-intelligence enrichment.
+
+![IOC Lookup](docs/screenshots/ioclookup.png)
+
+---
+
+# 🔎 Investigation Workflow
 
 ```text
 Security / AI Alert
@@ -120,49 +134,49 @@ When enrichment data is unavailable, the application reports only the available 
 
 ---
 
-## 🧠 MITRE ATT&CK & MITRE ATLAS
+# 🧠 MITRE ATT&CK & MITRE ATLAS
 
-The investigation workflow supports:
+The investigation workflow supports both traditional cybersecurity incidents and AI-security incidents.
 
-### MITRE ATT&CK
+## MITRE ATT&CK
 
 Used for mapping traditional cybersecurity activity and attacker techniques.
 
-### MITRE ATLAS
+## MITRE ATLAS
 
 Used for mapping threats involving AI and machine-learning systems.
 
-This allows the project to demonstrate investigation of both **traditional SOC incidents** and **AI-security incidents**.
+This allows the platform to demonstrate investigation of both **traditional SOC incidents** and **AI-security incidents**.
 
 ---
 
-## 🧪 AI Security Incident Scenarios
+# 🧪 AI Security Incident Scenarios
 
-The sample alert dataset includes AI-security scenarios such as:
+The sample alert dataset includes several AI-security scenarios.
 
-### Prompt Injection
+## Prompt Injection
 
 Attempts to manipulate an AI assistant through malicious instructions.
 
-### Sensitive Data Exfiltration Through LLM
+## Sensitive Data Exfiltration Through LLM
 
 Potential attempts to expose confidential information using an LLM.
 
-### RAG Knowledge Base Poisoning
+## RAG Knowledge Base Poisoning
 
 Suspicious modifications that could influence information retrieved by an AI system.
 
-### Unauthorized AI Agent Tool Execution
+## Unauthorized AI Agent Tool Execution
 
 Attempts to make an AI agent execute unauthorized tools or actions.
 
-### LLM API Credential Exposure
+## LLM API Credential Exposure
 
 Potential exposure of credentials associated with an LLM service.
 
 ---
 
-## 📊 Deterministic Risk Analysis
+# 📊 Deterministic Risk Analysis
 
 The project does not rely solely on an LLM to determine security risk.
 
@@ -176,9 +190,11 @@ The deterministic analysis layer evaluates collected evidence such as:
 
 The AI layer then helps explain the collected evidence in an analyst-friendly format.
 
+This architecture keeps security classification grounded in collected evidence instead of relying entirely on generative AI.
+
 ---
 
-## 📄 Investigation Reports
+# 📄 Investigation Reports
 
 The platform generates analyst-oriented reports containing:
 
@@ -193,11 +209,21 @@ The platform generates analyst-oriented reports containing:
 - Recommended response actions
 - Additional investigation details
 
+Two report views are available:
+
+### Analyst Report
+
+Designed for SOC analysts and technical investigation.
+
+### Customer Escalation Report
+
+Provides an escalation-oriented view that can be used when communicating investigation results.
+
 ---
 
 # 🔐 Authentication & Account Security
 
-The application includes a complete authentication workflow.
+The application includes an authentication and account-recovery workflow.
 
 Features include:
 
@@ -217,7 +243,7 @@ Sensitive credentials remain in backend environment variables and are not expose
 
 ---
 
-## 👨‍💻 Human-in-the-Loop Response
+# 👨‍💻 Human-in-the-Loop Response
 
 The platform intentionally avoids automatically executing destructive remediation actions.
 
@@ -232,6 +258,8 @@ Human Review
     ↙       ↘
 Approve    Reject
 ```
+
+Approving an action in the demonstration application simulates and records the response rather than modifying a real production system.
 
 This keeps the analyst involved in security-response decisions.
 
@@ -271,8 +299,8 @@ This keeps the analyst involved in security-response decisions.
 │  Groq LLM Analysis          │
 └──────────────┬──────────────┘
                │
-       ┌───────┴─────────┐
-       ▼                 ▼
+        ┌──────┴─────────┐
+        ▼                ▼
 ┌─────────────┐    ┌──────────────┐
 │ PostgreSQL  │    │ Threat Intel │
 │             │    │              │
@@ -281,6 +309,51 @@ This keeps the analyst involved in security-response decisions.
 │ IOCs        │    │              │
 │ Incidents   │    └──────────────┘
 └─────────────┘
+```
+
+---
+
+# 🌐 Production Deployment
+
+The production application uses a **single Render web service**.
+
+```text
+                  User
+                   │
+                   ▼
+        ┌─────────────────────┐
+        │    Render Service   │
+        │                     │
+        │  React Frontend     │
+        │        +            │
+        │  FastAPI Backend    │
+        └──────────┬──────────┘
+                   │
+          ┌────────┼─────────┐
+          │        │         │
+          ▼        ▼         ▼
+     PostgreSQL   Groq    Threat Intel
+                          ├─ VirusTotal
+                          └─ AbuseIPDB
+```
+
+During deployment:
+
+1. The React application is built using Vite.
+2. The frontend production build is copied into the final Docker image.
+3. FastAPI serves the React application.
+4. FastAPI also exposes the backend API.
+5. React SPA routes are handled by the backend fallback route.
+6. API and Swagger routes remain available separately.
+
+The application and API therefore use the same Render domain:
+
+```text
+Application
+https://ai-soc-investigation-agent.onrender.com
+
+Swagger
+https://ai-soc-investigation-agent.onrender.com/docs
 ```
 
 ---
@@ -318,7 +391,7 @@ This keeps the analyst involved in security-response decisions.
 - TypeScript
 - Vite
 - Tailwind CSS
-- Nginx
+- React Router
 
 ## Infrastructure
 
@@ -360,12 +433,18 @@ ai-soc-investigation-agent/
 │
 ├── docs/
 │   ├── screenshots/
+│   │   ├── dashboard.png
+│   │   ├── ai-investigation.png
+│   │   ├── investigation-report.png
+│   │   └── mitre-mapping.png
+│   │
 │   ├── ARCHITECTURE.md
 │   ├── DATABASE_SCHEMA.md
 │   ├── API_DESIGN.md
 │   ├── MILESTONES.md
 │   └── SENTINEL_INTEGRATION.md
 │
+├── Dockerfile
 ├── docker-compose.yml
 ├── .env.example
 └── README.md
@@ -375,7 +454,7 @@ ai-soc-investigation-agent/
 
 # ⚙️ Running Locally
 
-## 1. Clone the repository
+## 1. Clone the Repository
 
 ```bash
 git clone https://github.com/Divya2842/ai-soc-investigation-agent.git
@@ -412,7 +491,7 @@ ABUSEIPDB_API_KEY=your_abuseipdb_api_key
 RESEND_API_KEY=your_resend_api_key
 ```
 
-> Never commit real passwords, API keys, JWT secrets, database credentials, or other sensitive values to GitHub.
+> ⚠️ Never commit real passwords, API keys, JWT secrets, database credentials, or other sensitive values to GitHub.
 
 ---
 
@@ -437,6 +516,45 @@ http://localhost:8000/docs
 
 ---
 
+# 🖥️ Application Navigation
+
+After logging in, the main navigation provides:
+
+```text
+Overview
+Alerts
+IOC Lookup
+Logout
+```
+
+A typical analyst workflow is:
+
+```text
+Overview
+   ↓
+Alerts
+   ↓
+Select Incident
+   ↓
+Alert Details
+   ↓
+Run AI Investigation
+   ↓
+Review Findings
+   ↓
+MITRE ATT&CK / ATLAS Mapping
+   ↓
+Investigation Report
+   ↓
+Recommended Response
+   ↓
+Human Approval / Rejection
+   ↓
+Back to Alerts
+```
+
+---
+
 # 🗄️ PostgreSQL Database
 
 PostgreSQL provides persistent storage for application data including:
@@ -452,6 +570,8 @@ PostgreSQL provides persistent storage for application data including:
 The database seeding process is incremental.
 
 Existing alerts are preserved, and only previously unseen alert IDs are inserted.
+
+This allows additional demonstration alerts to be introduced without deleting existing investigation data.
 
 ---
 
@@ -472,39 +592,137 @@ Several security-focused design decisions are implemented:
 
 ---
 
+# 🧠 Evidence-Grounded AI Design
+
+The project follows an **evidence-first investigation architecture**.
+
+```text
+Alert
+  ↓
+Evidence Collection
+  ↓
+IOC Extraction
+  ↓
+Threat Intelligence Enrichment
+  ↓
+Log Correlation
+  ↓
+MITRE Mapping
+  ↓
+Deterministic Risk Analysis
+  ↓
+Groq LLM
+  ↓
+Analyst-Friendly Explanation
+```
+
+The LLM is not used as the sole source for IOC reputation or deterministic security classification.
+
+Instead, evidence is collected first using security services and deterministic logic.
+
+The AI layer then helps explain the collected evidence and produce an analyst-friendly investigation summary.
+
+---
+
+# 🤖 Structured AI Output
+
+AI-generated investigation output is expected to follow a structured schema.
+
+The application validates the LLM response before using it in the investigation.
+
+The expected investigation result includes information such as:
+
+```text
+Verdict
+Severity
+Confidence
+Summary
+Findings
+Evidence
+MITRE ATT&CK Techniques
+MITRE ATLAS Techniques
+Recommended Actions
+```
+
+If the generated output cannot be validated, the workflow can fall back to deterministic analysis rather than failing the complete investigation.
+
+---
+
+# 🔄 Incident Investigation Flow
+
+A typical investigation follows this sequence:
+
+```text
+1. Security alert received
+        ↓
+2. Alert context collected
+        ↓
+3. Indicators extracted
+        ↓
+4. IOC enrichment performed
+        ↓
+5. Relevant logs correlated
+        ↓
+6. MITRE ATT&CK / ATLAS mapped
+        ↓
+7. Deterministic risk score calculated
+        ↓
+8. Groq analyzes collected evidence
+        ↓
+9. Evidence-backed findings generated
+        ↓
+10. Investigation report generated
+        ↓
+11. Response actions recommended
+        ↓
+12. Analyst approves or rejects response
+```
+
+---
+
 # 📚 Documentation
 
 Additional project documentation is available in the `docs/` directory.
 
-### Architecture
+## Architecture
 
-`docs/ARCHITECTURE.md`
+```text
+docs/ARCHITECTURE.md
+```
 
-System architecture, investigation workflow, agent design, and service structure.
+Contains system architecture, investigation workflow, agent design, and service structure.
 
-### Database Schema
+## Database Schema
 
-`docs/DATABASE_SCHEMA.md`
+```text
+docs/DATABASE_SCHEMA.md
+```
 
-Application database design.
+Contains the application database design.
 
-### API Design
+## API Design
 
-`docs/API_DESIGN.md`
+```text
+docs/API_DESIGN.md
+```
 
-REST API architecture and endpoints.
+Contains REST API architecture and endpoint documentation.
 
-### Milestones
+## Milestones
 
-`docs/MILESTONES.md`
+```text
+docs/MILESTONES.md
+```
 
-Development milestones and implemented functionality.
+Contains development milestones and implemented functionality.
 
-### Sentinel Integration
+## Sentinel Integration
 
-`docs/SENTINEL_INTEGRATION.md`
+```text
+docs/SENTINEL_INTEGRATION.md
+```
 
-Design for adding Microsoft Sentinel as a future log source.
+Contains the design for adding Microsoft Sentinel as a future log source.
 
 ---
 
