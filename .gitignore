@@ -30,7 +30,8 @@ env/
 
 # Logs
 *.log
-logs/
+/logs/
+/data/logs/
 
 # Testing / coverage
 .pytest_cache/
