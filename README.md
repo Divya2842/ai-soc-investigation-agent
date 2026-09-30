@@ -50,7 +50,7 @@ The investigation view displays alert evidence, IOC enrichment, AI-assisted find
 
 The IOC Lookup feature allows analysts to investigate indicators and review available threat-intelligence enrichment.
 
-![IOC Lookup](docs/screenshots/ioclookup.png)
+![IOC Lookup](docs/screenshots/Ioclookup.png)
 
 ---
 
