@@ -18,6 +18,10 @@ from app.config.settings import settings
 from app.schemas.investigation import InvestigationResult
 
 
+# ============================================================
+# SYSTEM PROMPT
+# ============================================================
+
 SYSTEM_PROMPT = """
 You are a SOC investigation assistant.
 
@@ -33,6 +37,7 @@ deterministic security tools, including:
 
 Your job is to create an analyst-readable investigation narrative using
 ONLY the supplied evidence.
+
 
 IMPORTANT RULES
 
@@ -83,6 +88,7 @@ IMPORTANT RULES
 
 12. Return ONE JSON object only.
 
+
 The JSON object MUST contain exactly these top-level fields:
 
 {
@@ -97,6 +103,7 @@ The JSON object MUST contain exactly these top-level fields:
   "recommended_actions": []
 }
 
+
 Allowed severity values:
 
 "low"
@@ -104,7 +111,9 @@ Allowed severity values:
 "high"
 "critical"
 
+
 confidence must be a number from 0.0 to 1.0.
+
 
 findings must use this structure:
 
@@ -114,6 +123,7 @@ findings must use this structure:
     "evidence": ["string"]
   }
 ]
+
 
 attack_techniques must use this structure:
 
@@ -127,9 +137,11 @@ attack_techniques must use this structure:
   }
 ]
 
+
 atlas_techniques must use the same structure.
 
 recommended_actions must be an array of strings.
+
 
 SUMMARY REQUIREMENTS
 
@@ -154,6 +166,10 @@ Return JSON only.
 """.strip()
 
 
+# ============================================================
+# EXCEPTIONS
+# ============================================================
+
 class GroqNotConfiguredError(RuntimeError):
     """Raised when Groq is requested without an API key."""
 
@@ -161,6 +177,10 @@ class GroqNotConfiguredError(RuntimeError):
 class LLMOutputValidationError(RuntimeError):
     """Raised when the LLM response cannot be validated."""
 
+
+# ============================================================
+# CONFIGURATION
+# ============================================================
 
 def is_configured() -> bool:
     return settings.groq_configured
@@ -183,13 +203,23 @@ def _get_client():
     )
 
 
+# ============================================================
+# JSON EXTRACTION
+# ============================================================
+
 def _extract_json(raw_text: str) -> dict[str, Any]:
     """
-    Extract a JSON object from the model response.
+    Extract the first valid JSON object from the model response.
 
-    Normally the model should return pure JSON. This function also
-    tolerates accidental ```json fences or small amounts of surrounding
-    text.
+    Handles:
+    - pure JSON
+    - accidental Markdown JSON fences
+    - surrounding explanatory text
+    - trailing text
+    - multiple JSON objects
+
+    The function does NOT attempt to repair malformed JSON.
+    It only extracts syntactically valid JSON.
     """
 
     if not raw_text:
@@ -199,7 +229,10 @@ def _extract_json(raw_text: str) -> dict[str, Any]:
 
     text = raw_text.strip()
 
-    # Remove accidental Markdown code fences.
+    # ---------------------------------------------------------
+    # Remove accidental Markdown code fences
+    # ---------------------------------------------------------
+
     text = re.sub(
         r"^```(?:json)?\s*",
         "",
@@ -215,7 +248,11 @@ def _extract_json(raw_text: str) -> dict[str, Any]:
 
     text = text.strip()
 
-    # First try normal JSON parsing.
+    # ---------------------------------------------------------
+    # Attempt 1:
+    # Entire response is already one JSON object.
+    # ---------------------------------------------------------
+
     try:
         parsed = json.loads(text)
 
@@ -229,33 +266,65 @@ def _extract_json(raw_text: str) -> dict[str, Any]:
     except json.JSONDecodeError:
         pass
 
-    # If the model accidentally included surrounding text,
-    # extract the outer JSON object.
-    start = text.find("{")
-    end = text.rfind("}")
+    # ---------------------------------------------------------
+    # Attempt 2:
+    # Search for the first independently valid JSON object.
+    #
+    # json.JSONDecoder.raw_decode() is important here.
+    #
+    # Unlike:
+    #
+    #     text.find("{")
+    #     text.rfind("}")
+    #
+    # raw_decode() determines exactly where one JSON object
+    # finishes. Therefore trailing text or another JSON object
+    # does not automatically invalidate the first object.
+    # ---------------------------------------------------------
 
-    if start == -1 or end == -1 or end <= start:
+    decoder = json.JSONDecoder()
+
+    search_position = 0
+    last_error: json.JSONDecodeError | None = None
+
+    while True:
+
+        start = text.find("{", search_position)
+
+        if start == -1:
+            break
+
+        candidate = text[start:]
+
+        try:
+            parsed, _end_index = decoder.raw_decode(candidate)
+
+            if isinstance(parsed, dict):
+                return parsed
+
+        except json.JSONDecodeError as exc:
+            last_error = exc
+
+        # Move to the next opening brace and try again.
+        search_position = start + 1
+
+    # ---------------------------------------------------------
+    # No valid JSON object found
+    # ---------------------------------------------------------
+
+    if last_error is not None:
         raise LLMOutputValidationError(
-            "Could not find a JSON object in the Groq response."
-        )
+            f"Model did not return valid JSON: {last_error}"
+        ) from last_error
 
-    candidate = text[start:end + 1]
+    raise LLMOutputValidationError(
+        "Could not find a valid JSON object in the Groq response."
+    )
 
-    try:
-        parsed = json.loads(candidate)
 
-    except json.JSONDecodeError as exc:
-        raise LLMOutputValidationError(
-            f"Model did not return valid JSON: {exc}"
-        ) from exc
-
-    if not isinstance(parsed, dict):
-        raise LLMOutputValidationError(
-            "Groq response was not a JSON object."
-        )
-
-    return parsed
-
+# ============================================================
+# PYDANTIC VALIDATION
+# ============================================================
 
 def _validate_result(
     parsed: dict[str, Any],
@@ -277,6 +346,10 @@ def _validate_result(
         ) from exc
 
 
+# ============================================================
+# GROQ REQUEST
+# ============================================================
+
 def _call_groq(
     client,
     evidence: dict[str, Any],
@@ -286,9 +359,10 @@ def _call_groq(
     Make one Groq request.
 
     JSON parsing/validation is intentionally handled locally instead
-    of using response_format=json_object. This avoids provider-side
-    json_validate_failed errors while still enforcing our Pydantic
-    schema after generation.
+    of using response_format=json_object.
+
+    This avoids provider-side json_validate_failed errors while still
+    enforcing our Pydantic schema after generation.
     """
 
     evidence_json = json.dumps(
@@ -340,6 +414,10 @@ def _call_groq(
     return raw_text
 
 
+# ============================================================
+# INVESTIGATION GENERATION
+# ============================================================
+
 def generate_investigation_summary(
     evidence: dict[str, Any],
 ) -> InvestigationResult:
@@ -369,9 +447,9 @@ def generate_investigation_summary(
 
     first_error: Exception | None = None
 
-    # ---------------------------------------------------------
+    # ========================================================
     # ATTEMPT 1
-    # ---------------------------------------------------------
+    # ========================================================
 
     try:
 
@@ -402,9 +480,9 @@ def generate_investigation_summary(
             flush=True,
         )
 
-    # ---------------------------------------------------------
+    # ========================================================
     # ATTEMPT 2
-    # ---------------------------------------------------------
+    # ========================================================
 
     try:
 
@@ -413,12 +491,20 @@ def generate_investigation_summary(
             evidence=evidence,
             retry_instruction=(
                 "The previous generation could not be validated. "
-                "Return ONLY syntactically valid JSON. "
+                "Return ONLY one syntactically valid JSON object. "
                 "Do not use Markdown. "
+                "Do not use code fences. "
                 "Do not include comments. "
-                "Do not include text before or after the JSON. "
-                "Make sure every required field exists and all "
-                "arrays and objects are properly closed."
+                "Do not include explanations. "
+                "Do not include text before the JSON. "
+                "Do not include text after the JSON. "
+                "Do not return multiple JSON objects. "
+                "Use double quotes for every JSON property name "
+                "and every JSON string value. "
+                "Do not include trailing commas. "
+                "Make sure every required field exists. "
+                "Make sure every array and object is properly closed. "
+                "Return the JSON object only."
             ),
         )
 
