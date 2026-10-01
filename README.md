@@ -16,9 +16,6 @@ https://ai-soc-investigation-agent.onrender.com
 
 https://ai-soc-investigation-agent.onrender.com/docs
 
-> **Note:** The React frontend and FastAPI backend are deployed together as a single Render service. Initial loading may take a little longer if the service needs to start.
-
----
 
 # 📸 Application Screenshots
 
@@ -335,19 +332,6 @@ The production application uses a **single Render web service**.
      PostgreSQL   Groq    Threat Intel
                           ├─ VirusTotal
                           └─ AbuseIPDB
-```
-
-During deployment:
-
-1. The React application is built using Vite.
-2. The frontend production build is copied into the final Docker image.
-3. FastAPI serves the React application.
-4. FastAPI also exposes the backend API.
-5. React SPA routes are handled by the backend fallback route.
-6. API and Swagger routes remain available separately.
-
-The application and API therefore use the same Render domain:
-
 ```text
 Application
 https://ai-soc-investigation-agent.onrender.com
@@ -490,8 +474,6 @@ ABUSEIPDB_API_KEY=your_abuseipdb_api_key
 
 RESEND_API_KEY=your_resend_api_key
 ```
-
-> ⚠️ Never commit real passwords, API keys, JWT secrets, database credentials, or other sensitive values to GitHub.
 
 ---
 
